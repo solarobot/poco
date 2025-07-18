@@ -344,6 +344,15 @@ public:
 	virtual void bind(std::size_t pos, const std::list<NullData>& val, Direction dir = PD_IN);
 		/// Binds a null list.
 
+	virtual void bind(std::size_t pos, const std::vector<Poco::Dynamic::Var>& val, Direction dir = PD_IN);
+		/// Binds a var vector.
+
+	virtual void bind(std::size_t pos, const std::deque<Poco::Dynamic::Var>& val, Direction dir = PD_IN);
+		/// Binds a var deque.
+
+	virtual void bind(std::size_t pos, const std::list<Poco::Dynamic::Var>& val, Direction dir = PD_IN);
+		/// Binds a var list.
+
 	void bind(std::size_t pos, const Any& val, Direction dir = PD_IN);
 		/// Binds an Any.
 

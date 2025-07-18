@@ -348,25 +348,34 @@ public:
 	void bind(std::size_t pos, const std::list<NullData>& val, Direction dir);
 		/// Binds a null list.
 
+	void bind(std::size_t pos, const std::vector<Poco::Dynamic::Var>& val, Direction dir);
+		/// Binds a var vector.
+
+	void bind(std::size_t pos, const std::deque<Poco::Dynamic::Var>& val, Direction dir);
+		/// Binds a var deque.
+
+	void bind(std::size_t pos, const std::list<Poco::Dynamic::Var>& val, Direction dir);
+		/// Binds a var list.
+
 	template <typename T>
 	void bind(std::size_t pos, const std::vector<Nullable<T>>& val, Direction dir)
 		/// Binds a nullable vector.
 	{
-		bindImplNullableContainer(pos, val, dir);
+		this->bindImplNullableContainer(pos, val, dir);
 	}
 
 	template <typename T>
 	void bind(std::size_t pos, const std::deque<Nullable<T>>& val, Direction dir)
 		/// Binds a nullable deque.
 	{
-		bindImplNullableContainer(pos, val, dir);
+		this->bindImplNullableContainer(pos, val, dir);
 	}
 
 	template <typename T>
 	void bind(std::size_t pos, const std::list<Nullable<T>>& val, Direction dir)
 		/// Binds a nullable list.
 	{
-		bindImplNullableContainer(pos, val, dir);
+		this->bindImplNullableContainer(pos, val, dir);
 	}
 
 	void setDataBinding(ParameterBinding binding);
@@ -418,6 +427,188 @@ private:
 	SQLSMALLINT toODBCDirection(Direction dir) const;
 		/// Returns ODBC parameter direction based on the parameter binding direction
 		/// specified by user.
+
+	template <typename T>
+	static constexpr SQLSMALLINT getDataType()
+		/// Returns size of the data type.
+	{
+		static_assert (
+			(std::is_same_v<T, Date>) ||
+			(std::is_same_v<T, Time>) ||
+			(std::is_same_v<T, DateTime>) ||
+			(std::is_same_v<T, UUID>) ||
+			(std::is_same_v<T, Int8>) ||
+			(std::is_same_v<T, UInt8>) ||
+			(std::is_same_v<T, Int16>) ||
+			(std::is_same_v<T, UInt16>) ||
+			(std::is_same_v<T, Int32>) ||
+			(std::is_same_v<T, UInt32>) ||
+			(std::is_same_v<T, Int64>) ||
+			(std::is_same_v<T, UInt64>) ||
+			(std::is_same_v<T, std::string>) ||
+			(std::is_same_v<T, UTF16String>) ||
+			(std::is_same_v<T, BLOB>) ||
+			(std::is_same_v<T, CLOB>) ||
+			(std::is_same_v<T, char>) ||
+			(std::is_same_v<T, bool>) ||
+			(std::is_same_v<T, long>) ||
+			(std::is_same_v<T, float>) ||
+			(std::is_same_v<T, double>) ||
+			(std::is_same_v<T, char>), "getDataType(): Unsupported type"
+			);
+
+		if constexpr (std::is_same_v<T, Date       >) return SQL_C_TYPE_DATE;
+		if constexpr (std::is_same_v<T, Time       >) return SQL_C_TYPE_TIME;
+		if constexpr (std::is_same_v<T, DateTime   >) return SQL_C_TYPE_TIMESTAMP;
+		if constexpr (std::is_same_v<T, UUID       >) return SQL_C_BINARY;
+		if constexpr (std::is_same_v<T, Int8       >) return SQL_C_STINYINT;
+		if constexpr (std::is_same_v<T, UInt8      >) return SQL_C_UTINYINT;
+		if constexpr (std::is_same_v<T, Int16      >) return SQL_C_SSHORT;
+		if constexpr (std::is_same_v<T, UInt16     >) return SQL_C_USHORT;
+		if constexpr (std::is_same_v<T, Int32      >) return SQL_C_SLONG;
+		if constexpr (std::is_same_v<T, UInt32     >) return SQL_C_ULONG;
+		if constexpr (std::is_same_v<T, Int64      >) return SQL_C_SBIGINT;
+		if constexpr (std::is_same_v<T, UInt64     >) return SQL_C_UBIGINT;
+		if constexpr (std::is_same_v<T, std::string>) return SQL_C_CHAR;
+		if constexpr (std::is_same_v<T, UTF16String>) return SQL_C_WCHAR;
+		if constexpr (std::is_same_v<T, BLOB       >) return SQL_C_BINARY;
+		if constexpr (std::is_same_v<T, CLOB       >) return SQL_C_BINARY;
+		if constexpr (std::is_same_v<T, char       >) return SQL_C_STINYINT;
+		if constexpr (std::is_same_v<T, bool       >) return SQL_C_BIT;
+		if constexpr (std::is_same_v<T, long       >) return SQL_C_SLONG;
+		if constexpr (std::is_same_v<T, float      >) return SQL_C_FLOAT;
+		if constexpr (std::is_same_v<T, double     >) return SQL_C_DOUBLE;
+		if constexpr (std::is_same_v<T, char       >) return SQL_C_STINYINT;
+		return 0;
+	}
+
+	template <typename T>
+	static constexpr SQLSMALLINT getSize()
+		/// Returns size of the data type.
+	{
+		static_assert (
+			(std::is_same_v<T, Date>) ||
+			(std::is_same_v<T, Time>) ||
+			(std::is_same_v<T, DateTime>) ||
+			(std::is_same_v<T, UUID>) ||
+			(std::is_same_v<T, Int8>) ||
+			(std::is_same_v<T, UInt8>) ||
+			(std::is_same_v<T, Int16>) ||
+			(std::is_same_v<T, UInt16>) ||
+			(std::is_same_v<T, Int32>) ||
+			(std::is_same_v<T, UInt32>) ||
+			(std::is_same_v<T, Int64>) ||
+			(std::is_same_v<T, UInt64>) ||
+			(std::is_same_v<T, std::string>) ||
+			(std::is_same_v<T, UTF16String>) ||
+			(std::is_same_v<T, BLOB>) ||
+			(std::is_same_v<T, CLOB>) ||
+			(std::is_same_v<T, char>) ||
+			(std::is_same_v<T, bool>) ||
+			(std::is_same_v<T, long>) ||
+			(std::is_same_v<T, float>) ||
+			(std::is_same_v<T, double>) ||
+			(std::is_same_v<T, char>) ||
+			(std::is_same_v<T, wchar_t>), "getSize(): Unsupported type"
+			);
+
+		if constexpr (std::is_same_v<T, Date       > ||
+			std::is_same_v<T, Time       > ||
+			std::is_same_v<T, DateTime   > ||
+			std::is_same_v<T, UUID       >)						return Utility::sizeOf<T>();
+		else if constexpr (std::is_same_v<T, std::string> ||
+						   std::is_same_v<T, BLOB> ||
+						   std::is_same_v<T, CLOB>)				return sizeof(char);
+		else if constexpr (std::is_same_v<T, UTF16String>)		return sizeof(wchar_t);
+		else return sizeof(T);
+		return 0;
+	}
+
+	template <typename T, typename C>
+	constexpr SQLINTEGER getFieldSize(const size_t& pos, const C& val, bool& dynamic = false)
+		/// Returns size of the data type.
+	{
+		static_assert (
+			(std::is_same_v<T, Date>) ||
+			(std::is_same_v<T, Time>) ||
+			(std::is_same_v<T, DateTime>) ||
+			(std::is_same_v<T, UUID>) ||
+			(std::is_same_v<T, Int8>) ||
+			(std::is_same_v<T, UInt8>) ||
+			(std::is_same_v<T, Int16>) ||
+			(std::is_same_v<T, UInt16>) ||
+			(std::is_same_v<T, Int32>) ||
+			(std::is_same_v<T, UInt32>) ||
+			(std::is_same_v<T, Int64>) ||
+			(std::is_same_v<T, UInt64>) ||
+			(std::is_same_v<T, std::string>) ||
+			(std::is_same_v<T, UTF16String>) ||
+			(std::is_same_v<T, BLOB>) ||
+			(std::is_same_v<T, CLOB>) ||
+			(std::is_same_v<T, char>) ||
+			(std::is_same_v<T, bool>) ||
+			(std::is_same_v<T, long>) ||
+			(std::is_same_v<T, float>) ||
+			(std::is_same_v<T, double>) ||
+			(std::is_same_v<T, char>) ||
+			(std::is_same_v<T, wchar_t>), "getSize(): Unsupported type"
+			);		
+
+		typedef typename C::value_type MT;
+		if constexpr (std::is_same_v<T, std::string> ||
+					  std::is_same_v<T, UTF16String>) {
+
+			SQLINTEGER size = 0;
+			this->getColumnOrParameterSize(pos, size);
+			poco_assert(size > 0);
+
+			if (static_cast<std::size_t>(size) == _maxFieldSize)
+			{
+				if constexpr (std::is_same_v<MT, Poco::Nullable<T>>) {
+					std::vector<T> copyOfVal;
+					for (const auto& v : val)
+					{
+						if (v.isNull()) continue;
+						copyOfVal.push_back(v.value());
+					}
+					getMinValueSize(copyOfVal, size);
+				}
+				else
+					getMinValueSize(val, size);
+				// accomodate for terminating zero
+				constexpr SQLSMALLINT charSize = getSize<T>();
+				if (static_cast<std::size_t>(size) != _maxFieldSize) size += charSize;
+			}
+			dynamic = true;
+			return size;
+		}
+		else if constexpr (std::is_same_v<T, BLOB> ||
+						   std::is_same_v<T, CLOB>) {
+
+			typedef typename T::ValueType VT;
+			SQLINTEGER size = 0;
+			for (const auto& v : val)
+			{
+				if constexpr (std::is_same_v<MT, Poco::Nullable<T>>) {
+					if (v.isNull()) continue;
+					T value = v.value(); // BLOB or CLOB
+					SQLLEN sz = static_cast<SQLLEN>(value.size());
+					if (sz > size) size = static_cast<SQLINTEGER>(sz);
+				}
+				else if constexpr (std::is_same_v<MT, T>) {
+					T value = v; // BLOB or CLOB
+					SQLLEN sz = static_cast<SQLLEN>(value.size());
+					if (sz > size) size = static_cast<SQLINTEGER>(sz);
+				}
+			}
+			dynamic = true;
+
+			constexpr SQLSMALLINT charSize = getSize<VT>();
+			return size * charSize;
+		}
+
+		return 1;
+	}
 
 	template <typename T>
 	void bindImpl(std::size_t pos, T& val, SQLSMALLINT cDataType, Direction dir)
@@ -496,6 +687,14 @@ private:
 			_vecLengthIndicator[pos] = new LengthVec(length);
 		}
 
+		if (_charPtrs.size() <= pos)
+			_charPtrs.resize(pos + 1, 0);
+
+		constexpr SQLSMALLINT size = this->getSize<T>();
+		_charPtrs[pos] = static_cast<char*>(std::calloc(length, size));
+		T* dest = reinterpret_cast<T*>(_charPtrs[pos]);
+		std::copy(val.begin(), val.end(), dest);
+
 		if (Utility::isError(SQLBindParameter(_rStmt,
 			(SQLUSMALLINT) pos + 1,
 			toODBCDirection(dir),
@@ -503,8 +702,66 @@ private:
 			Utility::sqlDataType(cDataType),
 			colSize,
 			decDigits,
-			(SQLPOINTER) &val[0],
-			0,
+			_charPtrs[pos],
+			size,
+			&(*_vecLengthIndicator[pos])[0])))
+		{
+			throw StatementException(_rStmt, "ODBC::Binder::SQLBindParameter()");
+		}
+	}
+
+	template <typename T>
+	void bindImplNullableVec(std::size_t pos, const std::vector<Nullable<T>>& val, SQLSMALLINT cDataType, Direction dir)
+	{
+		// Check if binding mode is immediate, throw exception if not
+		if (PB_IMMEDIATE != _paramBinding)
+			throw InvalidAccessException("std::vector can only be bound immediately.");
+
+		std::size_t length = val.size();
+		SQLINTEGER colSize = 0;
+		SQLSMALLINT decDigits = 0;
+		getColSizeAndPrecision(pos, cDataType, colSize, decDigits); // Get column size and decimal digits
+		setParamSetSize(length); // Set the parameter set size
+
+		if (_vecLengthIndicator.size() <= pos)
+		{
+			_vecLengthIndicator.resize(pos + 1, 0);
+			_vecLengthIndicator[pos] = new LengthVec(length);
+		}
+
+		if (_charPtrs.size() <= pos)
+			_charPtrs.resize(pos + 1, 0);
+
+		constexpr SQLSMALLINT size = this->getSize<T>();
+		_charPtrs[pos] = static_cast<char*>(std::calloc(length, size));
+
+		auto lenIt = _vecLengthIndicator[pos]->begin();
+		std::size_t offset = 0;
+		for (const auto& v : val) {
+			if (v.isNull()) {
+				*lenIt = SQL_NULL_DATA; // NULL
+				std::memset(_charPtrs[pos] + offset, 0, size);
+			}
+			else {
+				// Unpack Nullable
+				T value = v.value();
+				std::memcpy(_charPtrs[pos] + offset, &value, size);
+				*lenIt = sizeof(T); // Actual size
+			}
+			offset += sizeof(T);
+			++lenIt;
+		}
+
+		// Bind the parameter
+		if (Utility::isError(SQLBindParameter(_rStmt,
+			(SQLUSMALLINT)pos + 1,
+			toODBCDirection(dir),
+			cDataType,
+			Utility::sqlDataType(cDataType),
+			colSize,
+			decDigits,
+			_charPtrs[pos],
+			size,
 			&(*_vecLengthIndicator[pos])[0])))
 		{
 			throw StatementException(_rStmt, "ODBC::Binder::SQLBindParameter()");
@@ -756,7 +1013,9 @@ private:
 		{
 			SQLLEN sz = static_cast<SQLLEN>(cIt->size());
 			if (sz > size) size = static_cast<SQLINTEGER>(sz);
-			*lIt = sz;
+			// times size of char type, since the char maybe wide.
+			// for blob and clob, sizeof(CharType) should always be 1;
+			*lIt = sz * sizeof(CharType);
 		}
 
 		if (_charPtrs.size() <= pos)
@@ -773,7 +1032,7 @@ private:
 		{
 			blobSize = cIt->size();
 			if (blobSize > static_cast<std::size_t>(size))
-				throw LengthExceededException("ODBC::Binder::bindImplContainerLOB():SQLBindParameter(std::vector<BLOB>)");
+				throw LengthExceededException("ODBC::Binder::bindImplContainerLOB():SQLBindParameter");
 			std::memcpy(_charPtrs[pos] + offset, cIt->rawContent(), blobSize * sizeof(CharType));
 			offset += size;
 		}
@@ -967,13 +1226,20 @@ private:
 
 		_charPtrs[pos] = (char*)std::calloc(val.size() * size, sizeof(char));
 		std::size_t offset = 0;
-		for (typename C::const_iterator it = val.begin(); it != val.end(); ++it)
+		auto lenIt = _vecLengthIndicator[pos]->begin();
+		for (typename C::const_iterator it = val.begin(); it != val.end(); ++it, ++lenIt)
 		{
-			std::vector<char> bytes(16);
-			it->copyTo(bytes.data()); // Extract 16-byte binary data
-			if (bytes.size() != static_cast<std::size_t>(size))
-				throw LengthExceededException("Invalid UUID size");
-			std::memcpy(_charPtrs[pos] + offset, bytes.data(), size);
+			if (it->isNull()) {
+				*lenIt = SQL_NULL_DATA;
+				std::memset(_charPtrs[pos] + offset, 0, size);
+			}
+			else {
+				std::vector<char> bytes(16);
+				it->copyTo(bytes.data()); // Extract 16-byte binary data
+				if (bytes.size() != static_cast<std::size_t>(size))
+					throw LengthExceededException("Invalid UUID size");
+				std::memcpy(_charPtrs[pos] + offset, bytes.data(), size);
+			}
 			offset += size;
 		}
 
@@ -1055,36 +1321,285 @@ private:
 
 		setParamSetSize(length);
 
+		typedef typename C::value_type NullableType;
+		typedef typename NullableType::Type T;
+
+		bool dynamic = false;
+		constexpr SQLINTEGER size = this->getSize<T>();
+		SQLINTEGER fieldSize = this->getFieldSize<T>(pos, val, dynamic);
 		if (_vecLengthIndicator.size() <= pos)
 		{
 			_vecLengthIndicator.resize(pos + 1, 0);
-			_vecLengthIndicator[pos] = new LengthVec(length, SQL_NULL_DATA);
-			auto valIt = val.begin(), valEnd = val.end();
-			auto lenIt = _vecLengthIndicator[pos]->begin(), lenEnd = _vecLengthIndicator[pos]->end();
-			for (; valIt != valEnd && lenIt != lenEnd; ++valIt, ++lenIt)
-			{
-				if (valIt->isNull()) *lenIt = SQL_NULL_DATA;
-				else *lenIt = Utility::sizeOf<C>();
-			}
+			_vecLengthIndicator[pos] = new LengthVec(length, size);
+		}
 
+		if (_charPtrs.size() <= pos)
+			_charPtrs.resize(pos + 1, 0);
+		_charPtrs[pos] = static_cast<char*>(std::calloc(length * fieldSize, size));
+
+		auto lenIt = _vecLengthIndicator[pos]->begin();
+		std::size_t offset = 0;
+		std::size_t step = dynamic? fieldSize : size; // Calculate step size for each element
+		constexpr SQLSMALLINT dataType = this->getDataType<T>();
+		SQLSMALLINT sqlType = Utility::sqlDataType(dataType);
+
+		for (const auto& v : val) {
+			if (v.isNull()) {
+				*lenIt = SQL_NULL_DATA; // NULL
+				std::memset(_charPtrs[pos] + offset, 0, step);
+			}
+			else {
+				// Unpack Nullable
+				T value = v.value();
+
+				if constexpr (std::is_same_v<T, Poco::DateTime>) {
+					SQL_TIMESTAMP_STRUCT ts;
+					Utility::dateTimeSync(ts, value);
+					std::memcpy(_charPtrs[pos] + offset, &ts, step);
+					*lenIt = step; // Actual size
+				}
+				else if constexpr (std::is_same_v<T, Poco::Data::Date>) {
+					SQL_DATE_STRUCT ds;
+					Utility::dateSync(ds, value);
+					std::memcpy(_charPtrs[pos] + offset, &ds, step);
+					*lenIt = step; // Actual size
+				}
+				else if constexpr (std::is_same_v<T, Poco::Data::Time>) {
+					SQL_TIME_STRUCT ts;
+					Utility::timeSync(ts, value);
+					std::memcpy(_charPtrs[pos] + offset, &ts, step);
+					*lenIt = step; // Actual size
+				}
+				else if constexpr(std::is_same_v<T, UTF16String>) {
+					std::size_t strSize = value.size() * size;
+					if (strSize > static_cast<std::size_t>(fieldSize))
+						throw LengthExceededException("ODBC::Binder::bindImplNullableContainer:SQLBindParameter(), with data type UTF16String");
+					std::memcpy(_charPtrs[pos] + offset, value.data(), strSize);
+					*lenIt = SQL_NTS;
+				}
+				else if constexpr (std::is_same_v<T, std::string>) {
+					std::size_t strSize = value.size() ;
+					if (strSize > static_cast<std::size_t>(fieldSize))
+						throw LengthExceededException("ODBC::Binder::bindImplNullableContainer:SQLBindParameter(), with data type std::string");
+					std::memcpy(_charPtrs[pos] + offset, value.c_str(), strSize);
+					*lenIt = SQL_NTS;
+				}
+				else if constexpr (std::is_same_v<T, BLOB> ||
+								   std::is_same_v<T, CLOB>) {
+					std::size_t blobSize = value.size() * size;
+					if (blobSize > static_cast<std::size_t>(fieldSize))
+						throw LengthExceededException("ODBC::Binder::bindImplNullableContainer:SQLBindParameter(), with data type LOB");
+					std::memcpy(_charPtrs[pos] + offset, value.rawContent(), blobSize);
+					*lenIt = blobSize;
+				}
+				else{
+					std::memcpy(_charPtrs[pos] + offset, &value, size);
+					*lenIt = size; // Actual size
+					if constexpr (std::is_same_v<T, UUID>) sqlType = SQL_GUID; // Special case for UUID
+				}
+			}
+			offset += step; // Move to the next position in the buffer
+			++lenIt;
 		}
 
 		SQLINTEGER colSize = 0;
 		SQLSMALLINT decDigits = 0;
-		getColSizeAndPrecision(pos, SQL_C_CHAR, colSize, decDigits);
+		getColSizeAndPrecision(pos, dataType, colSize, decDigits);
 
 		if (Utility::isError(SQLBindParameter(_rStmt,
 			(SQLUSMALLINT) pos + 1,
 			SQL_PARAM_INPUT,
-			SQL_C_CHAR,
-			TypeInfo::sqlDataType<SQL_C_CHAR>(),
+			dataType,
+			sqlType,
 			colSize,
 			decDigits,
-			0,
-			0,
+			_charPtrs[pos],
+			(SQLINTEGER)step,
 			&(*_vecLengthIndicator[pos])[0])))
 		{
 			throw StatementException(_rStmt, "ODBC::Binder::bindImplNullContainer():SQLBindParameter()");
+		}
+	}
+
+	template <typename T, typename C>
+	void convertAndBind(std::size_t pos, const C& val, Direction dir) {
+		std::vector<T> converted;
+		converted.reserve(val.size()); // Pre-allocate for efficiency
+		for (const auto& v : val) {
+			if (v.isEmpty()) {
+				converted.push_back(T()); // Create default value for empty Var
+			}
+			else {
+				converted.push_back(v.extract<T>());
+			}
+		}
+		bind(pos, converted, dir);
+	}
+
+	template <typename T, typename C>
+	constexpr void convertAndBindNullable(std::size_t pos, const C& val, Direction dir) {
+		std::vector<Poco::Nullable<T>> converted;
+		converted.reserve(val.size()); // Pre-allocate for efficiency
+		for (const auto& v : val) {
+			if (v.isEmpty()) {
+				converted.push_back(Poco::Nullable<T>()); // Create null value
+			}
+			else {
+				converted.push_back(Poco::Nullable<T>(v.extract<T>())); // Wrap non-null value
+			}
+		}
+
+		constexpr SQLSMALLINT dataType = this->getDataType<T>();
+
+		if constexpr (std::is_same_v<T, Date       > ||
+					  std::is_same_v<T, Time       > ||
+					  std::is_same_v<T, DateTime   > ||
+					  std::is_same_v<T, bool       > ||
+					  std::is_same_v<T, std::string> ||
+					  std::is_same_v<T, UTF16String> ||
+					  std::is_same_v<T, BLOB       > ||
+					  std::is_same_v<T, CLOB       > ||
+					  std::is_same_v<T, UUID       > )
+			this->bind<T>(pos, converted, dir);
+		else
+			this->bindImplNullableVec(pos, converted, dataType, dir);
+		return;
+	}
+
+	template<typename C>
+	void bindImplDynamicVarContainer(std::size_t pos, const C& val, Direction dir)
+	{
+		if (isOutBound(dir) || !isInBound(dir))
+			throw NotImplementedException("ODBC::Binder::bindImplDynamicVarContainer():Null container parameter type can only be inbound.");
+
+		if (PB_IMMEDIATE != _paramBinding)
+			throw InvalidAccessException("ODBC::Binder::bindImplDynamicVarContainer():Container can only be bound immediately.");
+
+		std::size_t length = val.size();
+		poco_assert(length);
+
+		// Throw exception if the container is empty
+		if (0 == length)
+			throw InvalidArgumentException("ODBC::Binder::bindImplDynamicVarContainer():Empty container not allowed.");
+
+		// Get the type of the first element as the reference type
+		if (length == 0) return; // Safety check although already validated
+		typename C::const_iterator it = val.begin();
+		bool containsNull = false;
+		std::type_info* refTypePtr = const_cast<std::type_info*>(&(*it).type());
+		typename C::const_iterator end = val.end();
+
+		for (; it != end; ++it)
+		{
+			if (it->isEmpty()) {
+				// If we encounter an empty Var, we assume it is a null value
+				if(!containsNull) containsNull = true;
+				continue; // Skip to next element
+			}
+			if(refTypePtr != nullptr && *refTypePtr == typeid(void))
+				refTypePtr = const_cast<std::type_info*>(&(*it).type());
+			if (containsNull)
+				break; // If we already found a null, we can stop checking further
+		}
+		const std::type_info& refType = *refTypePtr;
+		if (refType == typeid(void)){
+			std::vector<NullData> nullVec(length, std::nullopt);
+			this->bind(pos, nullVec, dir);
+			return;
+		}
+
+		if (containsNull) {
+			if (refType == typeid(Int32))
+				this->convertAndBindNullable<Int32>(pos, val, dir);
+			else if (refType == typeid(bool))
+				this->convertAndBindNullable<bool>(pos, val, dir);
+			else if (refType == typeid(char))
+				this->convertAndBindNullable<char>(pos, val, dir);
+			else if (refType == typeid(Int8))
+				this->convertAndBindNullable<Int8>(pos, val, dir);
+			else if (refType == typeid(UInt8))
+				this->convertAndBindNullable<UInt8>(pos, val, dir);
+			else if (refType == typeid(Int16))
+				this->convertAndBindNullable<Int16>(pos, val, dir);
+			else if (refType == typeid(UInt16))
+				this->convertAndBindNullable<UInt16>(pos, val, dir);
+			else if (refType == typeid(UInt32))
+				this->convertAndBindNullable<UInt32>(pos, val, dir);
+			else if (refType == typeid(Int64))
+				this->convertAndBindNullable<Int64>(pos, val, dir);
+			else if (refType == typeid(UInt64))
+				this->convertAndBindNullable<UInt64>(pos, val, dir);
+			else if (refType == typeid(long))
+				this->convertAndBindNullable<long>(pos, val, dir);
+			else if (refType == typeid(float))
+				this->convertAndBindNullable<float>(pos, val, dir);
+			else if (refType == typeid(double))
+				this->convertAndBindNullable<double>(pos, val, dir);
+			else if (refType == typeid(DateTime))
+				this->convertAndBindNullable<DateTime>(pos, val, dir);
+			else if (refType == typeid(Date))
+				this->convertAndBindNullable<Date>(pos, val, dir);
+			else if (refType == typeid(Time))
+				this->convertAndBindNullable<Time>(pos, val, dir);
+			else if (refType == typeid(std::string))
+				this->convertAndBindNullable<std::string>(pos, val, dir);
+			else if (refType == typeid(Poco::UTF16String))
+				this->convertAndBindNullable<UTF16String>(pos, val, dir);
+			else if (refType == typeid(BLOB))
+				this->convertAndBindNullable<BLOB>(pos, val, dir);
+			else if (refType == typeid(CLOB))
+				this->convertAndBindNullable<CLOB>(pos, val, dir);
+			else if (refType == typeid(Poco::UUID))
+				// UUID Container convers if GUID is null.
+				this->convertAndBind<UUID>(pos, val, dir);
+			else
+				throw UnknownTypeException(std::string("ODBC::Binder::bindImplDynamicVarContainer():Unsupported nullable type in container of Dynamic::Var: ") + refType.name());
+		}
+		else {
+			if (refType == typeid(Int32))
+				this->convertAndBind<Int32>(pos, val, dir);
+			else if (refType == typeid(std::string))
+				this->convertAndBind<std::string>(pos, val, dir);
+			else if (refType == typeid(Poco::UTF16String))
+				this->convertAndBind<Poco::UTF16String>(pos, val, dir);
+			else if (refType == typeid(bool))
+				this->convertAndBind<bool>(pos, val, dir);
+			else if (refType == typeid(char))
+				this->convertAndBind<char>(pos, val, dir);
+			else if (refType == typeid(Int8))
+				this->convertAndBind<Int8>(pos, val, dir);
+			else if (refType == typeid(UInt8))
+				this->convertAndBind<UInt8>(pos, val, dir);
+			else if (refType == typeid(Int16))
+				this->convertAndBind<Int16>(pos, val, dir);
+			else if (refType == typeid(UInt16))
+				this->convertAndBind<UInt16>(pos, val, dir);
+			else if (refType == typeid(UInt32))
+				this->convertAndBind<UInt32>(pos, val, dir);
+			else if (refType == typeid(Int64))
+				this->convertAndBind<Int64>(pos, val, dir);
+			else if (refType == typeid(UInt64))
+				this->convertAndBind<UInt64>(pos, val, dir);
+			else if (refType == typeid(float))
+				this->convertAndBind<float>(pos, val, dir);
+			else if (refType == typeid(double))
+				this->convertAndBind<double>(pos, val, dir);
+			else if (refType == typeid(DateTime))
+				this->convertAndBind<DateTime>(pos, val, dir);
+			else if (refType == typeid(Date))
+				this->convertAndBind<Date>(pos, val, dir);
+			else if (refType == typeid(Time))
+				this->convertAndBind<Time>(pos, val, dir);
+			else if (refType == typeid(BLOB))
+				this->convertAndBind<BLOB>(pos, val, dir);
+			else if (refType == typeid(CLOB))
+				this->convertAndBind<CLOB>(pos, val, dir);
+			else if (refType == typeid(long))
+				this->convertAndBind<long>(pos, val, dir);
+			else if (refType == typeid(Poco::UUID))
+				this->convertAndBind<Poco::UUID>(pos, val, dir);
+			else
+				throw UnknownTypeException(std::string("ODBC::Binder::bindImplDynamicVarContainer():Unsupported type in container of Dynamic::Var: ") + refType.name());
 		}
 	}
 
@@ -1678,6 +2193,24 @@ inline void Binder::bind(std::size_t pos, const std::deque<NullData>& val, Direc
 inline void Binder::bind(std::size_t pos, const std::list<NullData>& val, Direction dir)
 {
 	bindImplNullContainer(pos, val, dir);
+}
+
+
+inline void Binder::bind(std::size_t pos, const std::vector<Poco::Dynamic::Var>& val, Direction dir)
+{
+	bindImplDynamicVarContainer(pos, val, dir);
+}
+
+
+inline void Binder::bind(std::size_t pos, const std::deque<Poco::Dynamic::Var>& val, Direction dir)
+{
+	bindImplDynamicVarContainer(pos, val, dir);
+}
+
+
+inline void Binder::bind(std::size_t pos, const std::list<Poco::Dynamic::Var>& val, Direction dir)
+{
+	bindImplDynamicVarContainer(pos, val, dir);
 }
 
 

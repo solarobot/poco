@@ -469,6 +469,23 @@ void AbstractBinder::bind(std::size_t pos, const std::list<NullData>& val, Direc
 	throw NotImplementedException("std::list binder must be implemented.");
 }
 
+void AbstractBinder::bind(std::size_t pos, const std::vector<Poco::Dynamic::Var>& val, Direction dir)
+{
+	throw NotImplementedException("std::vector binder must be implemented.");
+}
+
+
+void AbstractBinder::bind(std::size_t pos, const std::deque<Poco::Dynamic::Var>& val, Direction dir)
+{
+	throw NotImplementedException("std::deque binder must be implemented.");
+}
+
+
+void AbstractBinder::bind(std::size_t pos, const std::list<Poco::Dynamic::Var>& val, Direction dir)
+{
+	throw NotImplementedException("std::list binder must be implemented.");
+}
+
 
 void AbstractBinder::bind(std::size_t pos, const Any& val, Direction dir)
 {
