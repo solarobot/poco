@@ -43,28 +43,26 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 # Setup C/C++ compiler options
 #################################################################################
 
-# Detect if compiler supports at least C++17 standard
-include(CXX1x)
-check_for_cxx17_compiler(CXX17_COMPILER)
-
-if(NOT CXX17_COMPILER)
-	message(FATAL_ERROR "Compiler does not support C++17.")
-endif()
-
-# If a C++17 compiler is available, then set the appropriate flags
-
-option(POCO_ENABLE_CPP20 "Build Poco with C++20 standard" ON)
+# Detect if compiler supports C++20 standard (preferred)
+include(CXX2x)
+check_for_cxx20_compiler(CXX20_COMPILER)
 
 if (EMSCRIPTEN)
-	set(POCO_ENABLE_CPP20 OFF CACHE BOOL "Build Poco with C++20 standard" FORCE)
+	set(CXX20_COMPILER OFF)
 endif()
 
-if (POCO_ENABLE_CPP20)
+if(CXX20_COMPILER)
 	set(CMAKE_CXX_STANDARD 20)
 	message(STATUS "Building Poco with C++20 standard")
 else()
+	# Fall back to C++17
+	include(CXX1x)
+	check_for_cxx17_compiler(CXX17_COMPILER)
+	if(NOT CXX17_COMPILER)
+		message(FATAL_ERROR "Compiler does not support C++17 or later.")
+	endif()
 	set(CMAKE_CXX_STANDARD 17)
-	message(STATUS "Building Poco with C++17 standard")
+	message(STATUS "Building Poco with C++17 standard (C++20 not available)")
 endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -110,7 +108,7 @@ if (WIN32 AND CMAKE_VERSION VERSION_LESS  "4.1.0")
 endif()
 
 if (NOT POCO_MINIMAL_BUILD)
-	find_package(OpenSSL)
+	find_package(OpenSSL 1.1.1)
 	find_package(MySQL)
 	find_package(PostgreSQL)
 	find_package(ODBC)
@@ -201,9 +199,24 @@ option(ENABLE_CPPPARSER "Enable C++ parser" OFF)
 option(ENABLE_POCODOC "Enable Poco Documentation Generator" OFF)
 option(ENABLE_PDF "Enable PDF" OFF)
 option(ENABLE_TRACE "Enable stack tracing" OFF)
+option(ENABLE_FASTLOGGER "Enable FastLogger (Quill-based high-performance logger)" ON)
 
-option(ENABLE_CPPUNIT
-	"Set to OFF|ON (default is OFF) to enable CppUnit library" OFF)
+# FastLogger uses Quill which requires x86/ARM intrinsics not available in WebAssembly
+if(EMSCRIPTEN)
+	set(ENABLE_FASTLOGGER OFF CACHE BOOL "Enable FastLogger" FORCE)
+endif()
+
+if(POCO_ENABLE_CPP20)
+	option(ENABLE_MODULES "Build Poco.* C++ modules" OFF)
+endif()
+
+if(ENABLE_ACTIVERECORD AND NOT ENABLE_DATA)
+	set(ENABLE_DATA ON CACHE BOOL "Enable Data" FORCE)
+endif()
+
+if(ENABLE_ACTIVERECORD AND NOT ENABLE_XML)
+	set(ENABLE_XML ON CACHE BOOL "Enable XML" FORCE)
+endif()
 
 option(ENABLE_CPPUNIT
 	"Set to OFF|ON (default is OFF) to enable CppUnit library" OFF)
@@ -305,6 +318,12 @@ endif()
 
 # - resolve dependencies
 
+if(ENABLE_SAMPLES)
+	set(ENABLE_UTIL ON CACHE BOOL "Enable Util" FORCE)
+	set(ENABLE_JSON ON CACHE BOOL "Enable JSON" FORCE)
+	set(ENABLE_XML ON CACHE BOOL "Enable XML" FORCE)
+endif()
+
 if(ENABLE_ENCODINGS_COMPILER)
 	set(ENABLE_NET ON CACHE BOOL "Enable Net" FORCE)
 	set(ENABLE_UTIL ON CACHE BOOL "Enable Util" FORCE)
@@ -394,7 +413,7 @@ if(ENABLE_APACHECONNECTOR)
 endif()
 
 if(ENABLE_CRYPTO OR ENABLE_NETSSL OR ENABLE_JWT)
-	find_package(OpenSSL REQUIRED)
+	find_package(OpenSSL 1.1.1 REQUIRED)
 endif()
 
 if(ENABLE_DATA_MYSQL)
@@ -412,6 +431,9 @@ endif()
 # - add required subdirectories
 
 add_subdirectory(dependencies)
+
+# Enable detailed compiler warnings for Poco code only (after dependencies to exclude them)
+poco_enable_detailed_compiler_warnings()
 
 if(ENABLE_FOUNDATION)
 	add_subdirectory(Foundation)
@@ -577,6 +599,28 @@ if(ENABLE_TRACE)
 	list(APPEND Poco_COMPONENTS "Trace")
 endif()
 
+if(ENABLE_MODULES AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.28)
+	add_subdirectory(modules)
+	list(APPEND Poco_COMPONENTS "C++ modules")
+endif()
+
+#############################################################
+# Benchmark application (optional, requires Google Benchmark)
+
+option(ENABLE_BENCHMARK
+	"Set to OFF|ON (default is OFF) to enable Benchmark application (requires Google Benchmark library)" OFF)
+
+if(ENABLE_BENCHMARK)
+	find_package(benchmark QUIET)
+	if(benchmark_FOUND)
+		message(STATUS "Google Benchmark found - building Benchmark application")
+		add_subdirectory(Benchmark)
+	else()
+		message(STATUS "Google Benchmark not found - skipping Benchmark application")
+		message(STATUS "Install with: brew install google-benchmark (macOS) or apt install libbenchmark-dev (Linux)")
+	endif()
+endif()
+
 
 #############################################################
 # Uninstall stuff see: http://www.vtk.org/Wiki/CMake_FAQ
@@ -644,6 +688,13 @@ endif()
 message(STATUS "[cmake] Installation target path: ${CMAKE_INSTALL_PREFIX}")
 if(CMAKE_TOOLCHAIN_FILE)
 	message(STATUS "[cmake] Use toolchain file:		${CMAKE_TOOLCHAIN_FILE}")
+endif()
+if (ENABLE_MODULES)
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.28)
+        message(STATUS "Building Poco.* C++ modules")
+    else()
+        message(WARNING "Skipping Poco.* C++ modules (requires CMake 3.28+, found ${CMAKE_VERSION})")
+    endif()
 endif()
 message(STATUS "[cmake] Build for OS type:      ${CMAKE_SYSTEM_NAME}")
 message(STATUS "[cmake] Build for OS version:   ${CMAKE_SYSTEM_VERSION}")

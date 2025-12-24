@@ -6,7 +6,7 @@
 // Module:  AsyncNotificationCenter
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
-// Aleph ONE Software Engineering d.o.o.,
+// Aleph ONE Software Engineering LLC,
 // and Contributors.
 //
 // SPDX-License-Identifier:	BSL-1.0
@@ -25,6 +25,17 @@
 namespace Poco {
 
 #if (POCO_HAVE_JTHREAD)
+
+AsyncNotificationCenter::AsyncNotificationCenter(AsyncMode mode) :
+	_mode(mode),
+	_ra(*this, &AsyncNotificationCenter::dequeue),
+	_enqueueThreadStarted(false),
+	_enqueueThreadDone(false),
+	_workersCount(defaultWorkersCount())
+{
+	start();
+}
+
 
 AsyncNotificationCenter::AsyncNotificationCenter(AsyncMode mode, std::size_t workersCount) :
 	_mode(mode),
@@ -46,12 +57,26 @@ AsyncNotificationCenter::AsyncNotificationCenter() :
 	start();
 }
 
-#endif
+#endif // POCO_HAVE_JTHREAD
 
 AsyncNotificationCenter::~AsyncNotificationCenter()
 {
 	stop();
 }
+
+
+#if (POCO_HAVE_JTHREAD)
+
+std::size_t AsyncNotificationCenter::defaultWorkersCount()
+{
+	unsigned int cores = std::thread::hardware_concurrency();
+	if (cores <= 2)       return 2;
+	else if (cores <= 4)  return 3;
+	else if (cores <= 8)  return 4;
+	else                  return 6;
+}
+
+#endif // POCO_HAVE_JTHREAD
 
 
 void AsyncNotificationCenter::postNotification(Notification::Ptr pNotification)
@@ -108,8 +133,6 @@ void AsyncNotificationCenter::notifyObservers(Notification::Ptr& pNotification)
 
 	if (_mode == AsyncMode::NOTIFY || _mode == AsyncMode::BOTH)
 	{
-		// Notification is asynchronous, add it to the lists
-		// for appropriate observers.
 		std::unique_lock<std::mutex> lock(_listsMutex);
 		auto observers = observersToNotify(pNotification);
 		if (observers.empty())
@@ -121,15 +144,12 @@ void AsyncNotificationCenter::notifyObservers(Notification::Ptr& pNotification)
 		}
 		_listsEmpty = false;
 		_listsEmptyCondition.notify_all();
+		return;
 	}
-	else
-	{
-		// Notification is synchronous
-		NotificationCenter::notifyObservers(pNotification);
-	}
-#else
+
+#endif // POCO_HAVE_JTHREAD
+
 	NotificationCenter::notifyObservers(pNotification);
-#endif
 }
 
 
@@ -160,7 +180,7 @@ void AsyncNotificationCenter::start()
 
 	if (_mode == AsyncMode::NOTIFY || _mode == AsyncMode::BOTH)
 	{
-		auto dispatch = [this](std::stop_token stopToken, int id) {
+		auto dispatch = [this](std::stop_token stopToken, std::size_t id) {
 			this->dispatchNotifications(stopToken, id);
 		};
 
@@ -195,9 +215,6 @@ void AsyncNotificationCenter::stop()
 	{
 		if (t.joinable()) t.join();
 	}
-
-// TODO: Should the observer lists be cleared here or
-//       shall the workers send all of them to observers and then finish?
 #endif
 }
 
@@ -265,7 +282,7 @@ std::optional<AsyncNotificationCenter::NotificationTuple> AsyncNotificationCente
 	return {};
 }
 
-void AsyncNotificationCenter::dispatchNotifications(std::stop_token& stopToken, int workerId)
+void AsyncNotificationCenter::dispatchNotifications(std::stop_token& stopToken, std::size_t workerId)
 {
 	while (!stopToken.stop_requested())
 	{

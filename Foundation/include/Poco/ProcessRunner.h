@@ -8,7 +8,7 @@
 // Definition of the ProcessRunner class.
 //
 // Copyright (c) 2023, Applied Informatics Software Engineering GmbH.
-// Aleph ONE Software Engineering d.o.o.,
+// Aleph ONE Software Engineering LLC,
 // and Contributors.
 //
 // SPDX-License-Identifier:    BSL-1.0
@@ -125,7 +125,12 @@ public:
 		/// Returns the error message.
 
 private:
+#if defined(POCO_OS_FAMILY_WINDOWS)
+	// On Windows, 0 is the invalid/error value returned by GetProcessId()
+	static const Poco::ProcessHandle::PID INVALID_PID = 0;
+#else
 	static const Poco::ProcessHandle::PID INVALID_PID = -1;
+#endif
 	static const int RESULT_UNKNOWN = -1;
 
 	static Args pidArgFormat()

@@ -5,7 +5,7 @@
 // Package: MongoDB
 // Module:  Array
 //
-// Copyright (c) 2012, Applied Informatics Software Engineering GmbH.
+// Copyright (c) 2012-2025, Applied Informatics Software Engineering GmbH.
 // and Contributors.
 //
 // SPDX-License-Identifier:	BSL-1.0
@@ -42,21 +42,24 @@ std::string Array::toString(int indent) const
 {
 	std::ostringstream oss;
 
-	oss << "[";
+	oss << '[';
 
 	if (indent > 0) oss << std::endl;
 
-	for (auto it = _elements.begin(), total = _elements.end(); it != total; ++it)
+	// Use protected accessor to get ordered names
+	const auto& names = orderedNames();
+	for (auto it = names.begin(), total = names.end(); it != total; ++it)
 	{
-		if (it != _elements.begin())
+		if (it != names.begin())
 		{
-			oss << ",";
+			oss << ',';
 			if (indent > 0) oss << std::endl;
 		}
 
 		for (int i = 0; i < indent; ++i) oss << ' ';
 
-		oss << (*it)->toString(indent > 0 ? indent + 2 : 0);
+		Element::Ptr element = Document::get(*it);
+		oss << element->toString(indent > 0 ? indent + 2 : 0);
 	}
 
 	if (indent > 0)
@@ -66,7 +69,7 @@ std::string Array::toString(int indent) const
 		for (int i = 0; i < indent; ++i) oss << ' ';
 	}
 
-	oss << "]";
+	oss << ']';
 
 	return oss.str();
 }

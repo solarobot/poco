@@ -115,7 +115,7 @@ public:
 		poco_socket_t fd = socket.impl()->sockfd();
 		struct epoll_event ev;
 		ev.events = 0;
-		ev.data.ptr = 0;
+		ev.data.ptr = nullptr;
 
 		int err = epoll_ctl(_epollfd, EPOLL_CTL_DEL, fd, &ev);
 		if (err) SocketImpl::error();
@@ -221,7 +221,7 @@ public:
 				}
 #else
 				std::uint64_t val;
-				read(_eventfd, &val, sizeof(val));
+				[[maybe_unused]] auto n = read(_eventfd, &val, sizeof(val));
 #endif
 			}
 		}
@@ -238,7 +238,7 @@ public:
 		// or 0 (meaning PollSet is being destroyed).
 		// Errors are ignored.
 		std::uint64_t val = 1;
-		write(_eventfd, &val, sizeof(val));
+		[[maybe_unused]] auto n = write(_eventfd, &val, sizeof(val));
 #endif
 	}
 
@@ -282,7 +282,7 @@ private:
 		return ret;
 	}
 
-	int addFD(int fd, int mode, int op, void* ptr = 0)
+	int addFD(int fd, int mode, int op, void* ptr = nullptr)
 	{
 		struct epoll_event ev{};
 		ev.events = 0;
@@ -335,7 +335,7 @@ private:
 };
 
 
-const epoll_event PollSetImpl::EPOLL_NULL_EVENT = {0, {0}};
+const epoll_event PollSetImpl::EPOLL_NULL_EVENT = {0, {nullptr}};
 
 
 #elif defined(POCO_HAVE_FD_POLL)

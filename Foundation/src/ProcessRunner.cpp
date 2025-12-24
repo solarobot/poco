@@ -6,7 +6,7 @@
 // Module:  ProcessRunner
 //
 // Copyright (c) 2023, Applied Informatics Software Engineering GmbH.
-// Aleph ONE Software Engineering d.o.o.,
+// Aleph ONE Software Engineering LLC,
 // and Contributors.
 //
 // SPDX-License-Identifier:    BSL-1.0
@@ -263,7 +263,7 @@ void ProcessRunner::start()
 
 			// verify that the file content is actually the process PID
 			FileInputStream fis(_pidFile);
-			int fPID = 0;
+			PID fPID = 0;
 			if (fis.peek() != std::ifstream::traits_type::eof())
 				fis >> fPID;
 			while (fPID != pid())

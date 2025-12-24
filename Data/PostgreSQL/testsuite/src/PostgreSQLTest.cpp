@@ -26,6 +26,7 @@
 #include "Poco/Data/DataException.h"
 #include <iostream>
 
+#include "Poco/Data/Transaction.h"
 
 using namespace Poco::Data;
 using namespace Poco::Data::Keywords;
@@ -41,8 +42,8 @@ using Poco::NamedTuple;
 using Poco::Environment;
 
 
-Poco::SharedPtr<Poco::Data::Session> PostgreSQLTest::_pSession = 0;
-Poco::SharedPtr<SQLExecutor> PostgreSQLTest::_pExecutor = 0;
+Poco::SharedPtr<Poco::Data::Session> PostgreSQLTest::_pSession = nullptr;
+Poco::SharedPtr<SQLExecutor> PostgreSQLTest::_pExecutor = nullptr;
 
 
 //
@@ -794,6 +795,37 @@ void PostgreSQLTest::testReconnect()
 }
 
 
+void PostgreSQLTest::testTransactionWithReconnect()
+{
+    if (!_pSession) fail ("Test not available.");
+
+    try
+    {
+        _pSession->begin();
+        *_pSession << "CREATE TABLE Person (LastName VARCHAR(30), FirstName VARCHAR(30), Address VARCHAR(30), Age INTEGER)", now;
+        _pSession->reconnect();
+        _pSession->commit();
+    }
+    catch (Poco::Exception& e)
+    {
+        _pSession->rollback();
+        std::cout << e.displayText() << std::endl;
+    }
+
+    try
+    {
+        _pSession->begin();
+        *_pSession << "CREATE TABLE Person (LastName VARCHAR(30), FirstName VARCHAR(30), Address VARCHAR(30), Age INTEGER)", now;
+        _pSession->commit();
+    }
+    catch (Poco::Exception& e)
+    {
+        _pSession->rollback();
+        std::cout << e.displayText() << std::endl;
+    }
+}
+
+
 void PostgreSQLTest::testSqlState()
 {
 	if (!_pSession) fail ("Test not available.");
@@ -887,6 +919,38 @@ void PostgreSQLTest::testNullableString()
 }
 
 
+void PostgreSQLTest::testOptionalString()
+{
+	if (!_pSession) fail ("Test not available.");
+
+	recreateNullableStringTable();
+
+	Int32 id = 0;
+	std::optional<std::string> address("Address");
+	std::optional<Int32> age = 10;
+	*_pSession << "INSERT INTO NullableStringTest VALUES($1, $2, $3)", use(id), use(address), use(age), now;
+	id++;
+	address = null;
+	age = null;
+	*_pSession << "INSERT INTO NullableStringTest VALUES($1, $2, $3)", use(id), use(address), use(age), now;
+
+	std::optional<std::string> resAddress;
+	std::optional<Int32> resAge;
+	*_pSession << "SELECT Address, Age FROM NullableStringTest WHERE Id = $1", into(resAddress), into(resAge), use(id), now;
+	assertTrue (resAddress == address);
+	assertTrue (resAge == age);
+	assertTrue (!resAddress.has_value());
+	assertTrue (null == resAddress);
+	assertTrue (resAddress == null);
+
+	resAddress = std::string("Test");
+	assertTrue (resAddress.has_value());
+	assertTrue (resAddress == std::string("Test"));
+	assertTrue (std::string("Test") == resAddress);
+	assertTrue (null != resAddress);
+	assertTrue (resAddress != null);
+}
+
 void PostgreSQLTest::testTupleWithNullable()
 {
 	if (!_pSession) fail ("Test not available.");
@@ -935,6 +999,59 @@ void PostgreSQLTest::testTupleWithNullable()
 
 	assertTrue (result[5].get<1>() == std::string("B"));
 	assertTrue (result[5].get<2>() == null);
+}
+
+
+void PostgreSQLTest::testStdTupleWithOptional()
+{
+	if (!_pSession) fail ("Test not available.");
+
+	recreateNullableStringTable();
+
+	using Info = std::tuple<Int32, std::optional<std::string>, std::optional<Int32>>;
+
+	Info info(0, std::string("Address"), 10);
+	*_pSession << "INSERT INTO NullableStringTest VALUES($1, $2, $3)", use(info), now;
+
+	using std::get;
+
+	get<0>(info)++;
+	get<1>(info).reset();
+	*_pSession << "INSERT INTO NullableStringTest VALUES($1, $2, $3)", use(info), now;
+
+	get<0>(info)++;
+	get<1>(info) = std::string("Address!");
+	get<2>(info).reset();
+	*_pSession << "INSERT INTO NullableStringTest VALUES($1, $2, $3)", use(info), now;
+
+	std::vector<Info> infos;
+	infos.push_back(Info(10, std::string("A"), 0));
+	infos.push_back(Info(11, std::nullopt, 12));
+	infos.push_back(Info(12, std::string("B"), std::nullopt));
+
+	*_pSession << "INSERT INTO NullableStringTest VALUES($1, $2, $3)", use(infos), now;
+
+	std::vector<Info> result;
+
+	*_pSession << "SELECT Id, Address, Age FROM NullableStringTest", into(result), now;
+
+	assertTrue (get<1>(result[0]) == std::string("Address"));
+	assertTrue (get<2>(result[0]) == 10);
+
+	assertTrue (get<1>(result[1]) == null);
+	assertTrue (get<2>(result[1]) == 10);
+
+	assertTrue (get<1>(result[2]) == std::string("Address!"));
+	assertTrue (get<2>(result[2]) == null);
+
+	assertTrue (get<1>(result[3]) == std::string("A"));
+	assertTrue (get<2>(result[3]) == 0);
+
+	assertTrue (get<1>(result[4]) == null);
+	assertTrue (get<2>(result[4]) == 12);
+
+	assertTrue (get<1>(result[5]) == std::string("B"));
+	assertTrue (get<2>(result[5]) == null);
 }
 
 
@@ -1254,7 +1371,7 @@ CppUnit::Test* PostgreSQLTest::suite()
 	catch (ConnectionFailedException& ex)
 	{
 		std::cout << ex.displayText() << std::endl;
-		return 0;
+		return nullptr;
 	}
 
 	std::cout << "*** Connected to [" << "PostgreSQL" << "] test database." << std::endl;
@@ -1314,8 +1431,10 @@ CppUnit::Test* PostgreSQLTest::suite()
 	CppUnit_addTest(pSuite, PostgreSQLTest, testNull);
 	CppUnit_addTest(pSuite, PostgreSQLTest, testNullableInt);
 	CppUnit_addTest(pSuite, PostgreSQLTest, testNullableString);
+	CppUnit_addTest(pSuite, PostgreSQLTest, testOptionalString);
 	CppUnit_addTest(pSuite, PostgreSQLTest, testTupleWithNullable);
-		CppUnit_addTest(pSuite, PostgreSQLTest, testSqlState);
+	CppUnit_addTest(pSuite, PostgreSQLTest, testStdTupleWithOptional);
+	CppUnit_addTest(pSuite, PostgreSQLTest, testSqlState);
 
 	CppUnit_addTest(pSuite, PostgreSQLTest, testBinarySimpleAccess);
 	CppUnit_addTest(pSuite, PostgreSQLTest, testBinaryComplexType);
@@ -1333,6 +1452,7 @@ CppUnit::Test* PostgreSQLTest::suite()
 	CppUnit_addTest(pSuite, PostgreSQLTest, testSessionTransactionNoAutoCommit);
 	CppUnit_addTest(pSuite, PostgreSQLTest, testTransaction);
 	CppUnit_addTest(pSuite, PostgreSQLTest, testReconnect);
+    CppUnit_addTest(pSuite, PostgreSQLTest, testTransactionWithReconnect);
 
 	return pSuite;
 }

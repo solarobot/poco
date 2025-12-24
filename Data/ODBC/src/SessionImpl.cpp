@@ -15,10 +15,9 @@
 #include "Poco/Data/ODBC/SessionImpl.h"
 #include "Poco/Data/ODBC/Utility.h"
 #include "Poco/Data/ODBC/ODBCStatementImpl.h"
-#include "Poco/Data/ODBC/Error.h"
+#include "Poco/Data/ODBC/Connector.h"
 #include "Poco/Data/ODBC/ODBCException.h"
 #include "Poco/Data/Session.h"
-#include "Poco/String.h"
 #include <sqlext.h>
 
 
@@ -170,12 +169,12 @@ void SessionImpl::open(const std::string& connect)
 			&SessionImpl::setDataTypeInfo,
 			&SessionImpl::dataTypeInfo);
 
-		Poco::Data::ODBC::SQLSetConnectAttr(_db, SQL_ATTR_QUIET_MODE, 0, 0);
+		Poco::Data::ODBC::SQLSetConnectAttr(_db, SQL_ATTR_QUIET_MODE, nullptr, 0);
 
 		if (!canTransact()) autoCommit("", true);
 	}
 	else
-		throw ConnectionException(SQL_NULL_HDBC,
+		throw ConnectionException(POCO_ODBC_NULL_HDBC,
 			Poco::format("Connection to '%s' failed.", connectionString()));
 
 	setName();
@@ -227,7 +226,7 @@ inline Poco::Any SessionImpl::getCursorUse(const std::string&) const
 #pragma warning (disable : 4995) // ignore marked as deprecated
 #endif
 	SQLUINTEGER curUse = 0;
-	Poco::Data::ODBC::SQLGetConnectAttr(_db, SQL_ATTR_ODBC_CURSORS, &curUse, SQL_IS_UINTEGER, 0);
+	Poco::Data::ODBC::SQLGetConnectAttr(_db, SQL_ATTR_ODBC_CURSORS, &curUse, SQL_IS_UINTEGER, nullptr);
 	switch (curUse)
 	{
 	case SQL_CUR_USE_ODBC:
@@ -263,7 +262,7 @@ bool SessionImpl::canTransact() const
 	if (ODBC_TXN_CAPABILITY_UNKNOWN == _canTransact)
 	{
 		SQLUSMALLINT ret;
-		checkError(Poco::Data::ODBC::SQLGetInfo(_db, SQL_TXN_CAPABLE, &ret, 0, 0),
+		checkError(Poco::Data::ODBC::SQLGetInfo(_db, SQL_TXN_CAPABLE, &ret, 0, nullptr),
 			"Failed to obtain transaction capability info.");
 
 		_canTransact = (SQL_TC_NONE != ret) ?
@@ -318,7 +317,7 @@ bool SessionImpl::getMultiActiveResultset(const std::string&) const
 {
 #ifdef POCO_DATA_ODBC_HAVE_SQL_SERVER_EXT
 	SQLINTEGER mars;
-	Poco::Data::ODBC::SQLGetConnectAttr(_db, SQL_COPT_SS_MARS_ENABLED, &mars, SQL_IS_INTEGER, 0);
+	Poco::Data::ODBC::SQLGetConnectAttr(_db, SQL_COPT_SS_MARS_ENABLED, &mars, SQL_IS_INTEGER, nullptr);
 	return mars == SQL_MARS_ENABLED_YES;
 #else
 	return false;
@@ -332,7 +331,7 @@ Poco::UInt32 SessionImpl::getTransactionIsolation() const
 	checkError(SQLGetConnectAttr(_db, SQL_ATTR_TXN_ISOLATION,
 		&isolation,
 		0,
-		0));
+		nullptr));
 
 	return transactionIsolation(isolation);
 }
@@ -359,7 +358,7 @@ Poco::UInt32 SessionImpl::getDefaultTransactionIsolation() const
 	checkError(SQLGetInfo(_db, SQL_DEFAULT_TXN_ISOLATION,
 		&isolation,
 		0,
-		0));
+		nullptr));
 
 	return transactionIsolation(isolation);
 }
@@ -418,7 +417,7 @@ bool SessionImpl::isAutoCommit(const std::string&) const
 		SQL_ATTR_AUTOCOMMIT,
 		&value,
 		0,
-		0));
+		nullptr));
 
 	return (0 != value);
 }
@@ -433,7 +432,7 @@ bool SessionImpl::isTransaction() const
 		SQL_ATTR_AUTOCOMMIT,
 		&value,
 		0,
-		0));
+		nullptr));
 
 	if (0 == value) return _inTransaction;
 	else return false;
@@ -505,7 +504,7 @@ int SessionImpl::maxStatementLength() const
 		SQL_MAXIMUM_STATEMENT_LENGTH,
 		(SQLPOINTER) &info,
 		0,
-		0)))
+		nullptr)))
 	{
 		throw ConnectionException(_db,
 			"SQLGetInfo(SQL_MAXIMUM_STATEMENT_LENGTH)");
